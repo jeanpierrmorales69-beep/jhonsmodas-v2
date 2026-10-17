@@ -209,9 +209,9 @@
       </div>
 
       <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card" style="cursor: pointer;" onclick="switchTab('tabAjustes')">
           <div>
-            <div class="stat-label">Capital</div>
+            <div class="stat-label">Capital (Ver Movimientos)</div>
             <div id="statCapital" class="stat-value" style="color: var(--accent-blue);">$0</div>
           </div>
           <div class="stat-icon" style="background: #eff6ff; color: #2563eb;"><i class="fa-solid fa-vault"></i></div>
@@ -325,13 +325,16 @@
         <div class="card-header">
           <h3 class="card-title"><i class="fa-solid fa-receipt"></i> Historial & Cobros</h3>
           <div style="display:flex; gap:8px; flex-wrap:wrap; width:100%;">
-            <select id="filterStatus" class="form-control" onchange="renderHistoryTable()" style="flex:1; min-width: 150px;">
-              <option value="ALL">Todos los Registros</option>
+            <select id="filterClient" class="form-control" onchange="renderHistoryTable()" style="flex:1; min-width: 150px;">
+              <option value="ALL">Todos los Clientes</option>
+            </select>
+            <select id="filterStatus" class="form-control" onchange="renderHistoryTable()" style="flex:1; min-width: 130px;">
+              <option value="ALL">Todos los Estados</option>
               <option value="PENDING">Pendientes</option>
               <option value="PAID">Pagados</option>
             </select>
             <button class="btn-black btn-green" onclick="exportWeeklyCSV()" style="padding: 10px 14px; font-size: 0.8rem; width:auto;">
-              <i class="fa-solid fa-file-excel"></i> Exportar Reporte
+              <i class="fa-solid fa-file-excel"></i> Exportar
             </button>
           </div>
         </div>
@@ -418,14 +421,56 @@
     <div id="tabAjustes" class="content-section">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i class="fa-solid fa-sliders"></i> Ajustes del Sistema</h3>
+          <h3 class="card-title"><i class="fa-solid fa-sliders"></i> Ajustes y Gestión de Capital</h3>
         </div>
 
-        <div style="margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 16px; border: 1px solid var(--border-color);">
-          <h4 style="font-size: 0.85rem; margin-bottom: 8px; font-weight: 700;">CAPITAL DE LA EMPRESA</h4>
-          <div style="display: flex; gap: 10px;">
-            <input type="number" id="inputCapital" class="form-control" placeholder="0">
-            <button class="btn-black" onclick="updateCapital()" style="width: auto; padding: 0 20px;">Guardar</button>
+        <!-- APARTADO DE CAPITAL, INGRESOS Y EGRESOS -->
+        <div style="margin-bottom: 28px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-vault" style="color: var(--accent-blue);"></i> Control de Capital, Ingresos y Egresos
+          </h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">Registra entradas o salidas de dinero para actualizar automáticamente el capital de tu negocio.</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="background: #ffffff; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+              <label style="font-size: 0.75rem; font-weight: 700; color: #047857; display: block; margin-bottom: 6px;">➕ REGISTRAR INGRESO</label>
+              <input type="number" id="incomeAmount" class="form-control" placeholder="Monto $" style="margin-bottom: 8px;">
+              <input type="text" id="incomeDesc" class="form-control" placeholder="Motivo (Ej: Inyección capital)" style="margin-bottom: 8px; font-size: 0.85rem;">
+              <button class="btn-black btn-green" onclick="addTransaction('INCOME')" style="padding: 10px; font-size: 0.85rem; width: 100%;">Agregar Ingreso</button>
+            </div>
+
+            <div style="background: #ffffff; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+              <label style="font-size: 0.75rem; font-weight: 700; color: #b91c1c; display: block; margin-bottom: 6px;">➖ REGISTRAR EGRESO (GASTO)</label>
+              <input type="number" id="expenseAmount" class="form-control" placeholder="Monto $" style="margin-bottom: 8px;">
+              <input type="text" id="expenseDesc" class="form-control" placeholder="Motivo (Ej: Compra material)" style="margin-bottom: 8px; font-size: 0.85rem;">
+              <button class="btn-black" onclick="addTransaction('EXPENSE')" style="padding: 10px; font-size: 0.85rem; width: 100%; background: #b91c1c;">Registrar Egreso</button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Capital Base Manual:</span>
+            <input type="number" id="inputCapital" class="form-control" placeholder="0" style="flex:1;">
+            <button class="btn-black" onclick="updateCapitalDirect()" style="width: auto; padding: 12px 20px; font-size: 0.85rem;">Fijar Capital</button>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <h5 style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Historial de Movimientos de Capital</h5>
+            <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+              <table class="custom-table" style="font-size: 0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="capitalLogTableBody">
+                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No hay movimientos registrados</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -570,6 +615,7 @@
       users: [defaultAdmin, defaultEmployee],
       clients: [],
       purchases: [],
+      capitalLogs: [],
       capital: 0,
       settings: { bgColor: '#f8fafc' }
     };
@@ -604,6 +650,7 @@
           }
           db.clients = data.clients || [];
           db.purchases = data.purchases || [];
+          db.capitalLogs = data.capitalLogs || [];
           db.capital = data.capital || 0;
           db.settings = data.settings || { bgColor: '#f8fafc' };
         } else {
@@ -625,6 +672,7 @@
           users: db.users,
           clients: db.clients,
           purchases: db.purchases,
+          capitalLogs: db.capitalLogs,
           capital: db.capital,
           settings: db.settings
         });
@@ -633,16 +681,13 @@
       }
     }
 
-    // FORMULARIO DE LOGIN DINÁMICO MULTI-USUARIO
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const u = document.getElementById('loginUser').value.trim().toLowerCase();
       const p = document.getElementById('loginPass').value.trim();
 
-      // Forzar carga de los datos más recientes de la nube antes de validar
       await loadDataFromCloud();
 
-      // Validación directa Administrador Principal
       if (u === 'jhon' && p === '15924325') {
         currentUser = defaultAdmin;
         localStorage.setItem('jhonsmodas_session', JSON.stringify(currentUser));
@@ -650,7 +695,6 @@
         return;
       }
 
-      // Validación para cualquier otro usuario registrado por el Admin
       const found = db.users.find(x => x.user.toLowerCase() === u && x.pass === p);
       if (found) {
         currentUser = found;
@@ -711,9 +755,11 @@
       renderMetrics();
       renderClientSelect();
       renderClientsTable();
+      renderHistoryFilterSelect();
       renderHistoryTable();
       renderMoraTable();
       renderUsersTable();
+      renderCapitalLogsTable();
     }
 
     window.addItemToCart = function() {
@@ -796,6 +842,13 @@
       db.purchases.push(newPurchase);
       if (abono > 0) {
         db.capital = (db.capital || 0) + abono;
+        db.capitalLogs.push({
+          id: Date.now(),
+          date: new Date().toISOString().split('T')[0],
+          type: 'INCOME',
+          desc: `Abono inicial recibo ${newPurchase.receiptNo} (${client.name})`,
+          amount: abono
+        });
       }
 
       await saveAllToCloud();
@@ -832,6 +885,17 @@
       select.innerHTML = html;
     }
 
+    function renderHistoryFilterSelect() {
+      const select = document.getElementById('filterClient');
+      const currentVal = select.value;
+      let html = '<option value="ALL">Todos los Clientes</option>';
+      db.clients.forEach(c => {
+        html += `<option value="${c.id}">${c.name}</option>`;
+      });
+      select.innerHTML = html;
+      select.value = currentVal;
+    }
+
     function renderClientsTable() {
       const tbody = document.getElementById('clientsTableBody');
       if (db.clients.length === 0) {
@@ -859,11 +923,15 @@
 
     function renderHistoryTable() {
       const tbody = document.getElementById('historyTableBody');
-      const filter = document.getElementById('filterStatus').value;
+      const statusFilter = document.getElementById('filterStatus').value;
+      const clientFilter = document.getElementById('filterClient').value;
 
       let list = db.purchases;
-      if (filter !== 'ALL') {
-        list = list.filter(p => p.status === filter);
+      if (statusFilter !== 'ALL') {
+        list = list.filter(p => p.status === statusFilter);
+      }
+      if (clientFilter !== 'ALL') {
+        list = list.filter(p => p.client.id == clientFilter);
       }
 
       if (list.length === 0) {
@@ -891,12 +959,22 @@
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})"><i class="fa-solid fa-receipt"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})"><i class="fa-solid fa-pen-to-square"></i></button>
                 ${p.status === 'PENDING' ? `<button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})"><i class="fa-solid fa-dollar-sign"></i></button>` : ''}
+                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#b91c1c;" onclick="deletePurchase(${p.id})" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
           </tr>
         `;
       });
       tbody.innerHTML = html;
+    }
+
+    // ELIMINAR REGISTRO DE COMPRA / HISTORIAL
+    window.deletePurchase = async function(id) {
+      if (!confirm("¿Estás seguro de eliminar este registro del historial?")) return;
+      db.purchases = db.purchases.filter(p => p.id !== id);
+      await saveAllToCloud();
+      refreshAllData();
+      alert("Registro eliminado con éxito.");
     }
 
     window.addAbonoPrompt = async function(id) {
@@ -917,6 +995,13 @@
       p.abono += amount;
       p.saldo = p.total - p.abono;
       db.capital = (db.capital || 0) + amount;
+      db.capitalLogs.push({
+        id: Date.now(),
+        date: new Date().toISOString().split('T')[0],
+        type: 'INCOME',
+        desc: `Abono a recibo ${p.receiptNo} (${p.client.name})`,
+        amount: amount
+      });
 
       if (p.saldo <= 0) {
         p.saldo = 0;
@@ -959,6 +1044,96 @@
       await saveAllToCloud();
       refreshAllData();
       alert('Compra actualizada correctamente.');
+    }
+
+    // GESTIÓN DE INGRESOS Y EGRESOS DE CAPITAL
+    window.addTransaction = async function(type) {
+      const amountInput = document.getElementById(type === 'INCOME' ? 'incomeAmount' : 'expenseAmount');
+      const descInput = document.getElementById(type === 'INCOME' ? 'incomeDesc' : 'expenseDesc');
+      
+      const amount = parseFloat(amountInput.value);
+      const desc = descInput.value.trim();
+
+      if (isNaN(amount) || amount <= 0 || !desc) {
+        alert("Por favor ingrese un monto válido y una descripción.");
+        return;
+      }
+
+      if (type === 'INCOME') {
+        db.capital = (db.capital || 0) + amount;
+      } else {
+        db.capital = (db.capital || 0) - amount;
+      }
+
+      db.capitalLogs.push({
+        id: Date.now(),
+        date: new Date().toISOString().split('T')[0],
+        type: type,
+        desc: desc,
+        amount: amount
+      });
+
+      amountInput.value = '';
+      descInput.value = '';
+
+      await saveAllToCloud();
+      refreshAllData();
+      alert(type === 'INCOME' ? 'Ingreso registrado con éxito.' : 'Egreso registrado con éxito.');
+    }
+
+    window.updateCapitalDirect = async function() {
+      const val = parseFloat(document.getElementById('inputCapital').value);
+      if (isNaN(val)) {
+        alert('Ingrese un valor de capital válido.');
+        return;
+      }
+      db.capital = val;
+      await saveAllToCloud();
+      renderMetrics();
+      alert('Capital actualizado directamente en la nube.');
+    }
+
+    function renderCapitalLogsTable() {
+      const tbody = document.getElementById('capitalLogTableBody');
+      if (!db.capitalLogs || db.capitalLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No hay movimientos registrados</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      db.capitalLogs.slice().reverse().forEach((log, idx) => {
+        const isIncome = log.type === 'INCOME';
+        const badgeColor = isIncome ? '#047857' : '#b91c1c';
+        const sign = isIncome ? '+' : '-';
+        const typeText = isIncome ? 'Ingreso' : 'Egreso';
+
+        html += `
+          <tr>
+            <td>${log.date}</td>
+            <td><span style="color: ${badgeColor}; font-weight:700;">${typeText}</span></td>
+            <td>${log.desc}</td>
+            <td style="color: ${badgeColor}; font-weight:700;">${sign}$${log.amount.toLocaleString()}</td>
+            <td><button onclick="deleteCapitalLog(${log.id})" style="background:none; border:none; color:#b91c1c; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    window.deleteCapitalLog = async function(id) {
+      const log = db.capitalLogs.find(l => l.id === id);
+      if (!log) return;
+      if (!confirm("¿Eliminar este movimiento y ajustar el capital?")) return;
+
+      if (log.type === 'INCOME') {
+        db.capital -= log.amount;
+      } else {
+        db.capital += log.amount;
+      }
+
+      db.capitalLogs = db.capitalLogs.filter(l => l.id !== id);
+      await saveAllToCloud();
+      refreshAllData();
     }
 
     function renderMoraTable() {
@@ -1041,18 +1216,6 @@
       document.body.removeChild(link);
     }
 
-    window.updateCapital = async function() {
-      const val = parseFloat(document.getElementById('inputCapital').value);
-      if (isNaN(val) || val < 0) {
-        alert('Ingrese un valor de capital válido.');
-        return;
-      }
-      db.capital = val;
-      await saveAllToCloud();
-      renderMetrics();
-      alert('Capital actualizado en la nube.');
-    }
-
     window.selectAvatar = async function(icon) {
       if (!currentUser) return;
       currentUser.avatar = icon;
@@ -1069,7 +1232,6 @@
       document.body.style.backgroundColor = color;
     }
 
-    // CREACIÓN Y GUARDADO AUTOMÁTICO DE USUARIOS EN LA NUBE
     document.getElementById('newUserForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const user = document.getElementById('newUsername').value.trim();
