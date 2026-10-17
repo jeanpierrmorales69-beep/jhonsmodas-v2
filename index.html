@@ -105,13 +105,13 @@
     .card-title { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 12px; }
-    .custom-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px; }
+    .custom-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 650px; }
     .custom-table th { background: #f8fafc; padding: 12px 14px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border-color); }
     .custom-table td { padding: 14px; font-size: 0.88rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 
-    .badge { padding: 5px 10px; border-radius: 30px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-block; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
-    .badge-paid { background: #ecfdf5; color: #065f46; }
+    .select-status-inline { padding: 6px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 1px solid var(--border-color); cursor: pointer; outline: none; }
+    .select-status-inline.PENDING { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .select-status-inline.PAID { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 
     .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9, 9, 11, 0.75); backdrop-filter: blur(6px); z-index: 100; align-items: center; justify-content: center; padding: 12px; }
     .modal-card { background: #ffffff; border-radius: 20px; max-width: 600px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; }
@@ -211,14 +211,14 @@
       <div class="stats-grid">
         <div class="stat-card" style="cursor: pointer;" onclick="switchTab('tabAjustes')">
           <div>
-            <div class="stat-label">Capital (Ver Movimientos)</div>
+            <div class="stat-label">Capital Actual</div>
             <div id="statCapital" class="stat-value" style="color: var(--accent-blue);">$0</div>
           </div>
           <div class="stat-icon" style="background: #eff6ff; color: #2563eb;"><i class="fa-solid fa-vault"></i></div>
         </div>
         <div class="stat-card">
           <div>
-            <div class="stat-label">Ventas</div>
+            <div class="stat-label">Ventas Totales</div>
             <div id="statTotalVentas" class="stat-value">$0</div>
           </div>
           <div class="stat-icon" style="background: #f1f5f9; color: #0f172a;"><i class="fa-solid fa-chart-line"></i></div>
@@ -426,10 +426,12 @@
 
         <!-- APARTADO DE CAPITAL, INGRESOS Y EGRESOS -->
         <div style="margin-bottom: 28px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--border-color);">
-          <h4 style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-vault" style="color: var(--accent-blue);"></i> Control de Capital, Ingresos y Egresos
+          <h4 style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <span><i class="fa-solid fa-vault" style="color: var(--accent-blue);"></i> Control de Capital e Historial de Movimientos</span>
+            <button class="btn-black btn-green" onclick="exportCapitalLogsCSV()" style="padding: 8px 14px; font-size: 0.78rem; width: auto;">
+              <i class="fa-solid fa-file-excel"></i> Exportar Movimientos (CSV)
+            </button>
           </h4>
-          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">Registra entradas o salidas de dinero para actualizar automáticamente el capital de tu negocio.</p>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
             <div style="background: #ffffff; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
@@ -442,20 +444,20 @@
             <div style="background: #ffffff; padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
               <label style="font-size: 0.75rem; font-weight: 700; color: #b91c1c; display: block; margin-bottom: 6px;">➖ REGISTRAR EGRESO (GASTO)</label>
               <input type="number" id="expenseAmount" class="form-control" placeholder="Monto $" style="margin-bottom: 8px;">
-              <input type="text" id="expenseDesc" class="form-control" placeholder="Motivo (Ej: Compra material)" style="margin-bottom: 8px; font-size: 0.85rem;">
+              <input type="text" id="expenseDesc" class="form-control" placeholder="Motivo (Ej: Compra telas)" style="margin-bottom: 8px; font-size: 0.85rem;">
               <button class="btn-black" onclick="addTransaction('EXPENSE')" style="padding: 10px; font-size: 0.85rem; width: 100%; background: #b91c1c;">Registrar Egreso</button>
             </div>
           </div>
 
           <div style="display: flex; gap: 10px; align-items: center; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Capital Base Manual:</span>
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Ajustar Capital Manual ($):</span>
             <input type="number" id="inputCapital" class="form-control" placeholder="0" style="flex:1;">
             <button class="btn-black" onclick="updateCapitalDirect()" style="width: auto; padding: 12px 20px; font-size: 0.85rem;">Fijar Capital</button>
           </div>
 
           <div style="margin-top: 16px;">
-            <h5 style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Historial de Movimientos de Capital</h5>
-            <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+            <h5 style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Historial Completo de Entradas y Salidas</h5>
+            <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
               <table class="custom-table" style="font-size: 0.8rem;">
                 <thead>
                   <tr>
@@ -651,7 +653,7 @@
           db.clients = data.clients || [];
           db.purchases = data.purchases || [];
           db.capitalLogs = data.capitalLogs || [];
-          db.capital = data.capital || 0;
+          db.capital = data.capital !== undefined ? data.capital : 0;
           db.settings = data.settings || { bgColor: '#f8fafc' };
         } else {
           await saveAllToCloud();
@@ -942,8 +944,6 @@
       let html = '';
       list.slice().reverse().forEach(p => {
         const summary = p.items.map(i => `${i.qty}x ${i.desc}`).join(', ');
-        const badgeClass = p.status === 'PAID' ? 'badge-paid' : 'badge-pending';
-        const badgeText = p.status === 'PAID' ? 'Pagado' : 'Pendiente';
 
         html += `
           <tr>
@@ -953,12 +953,17 @@
             <td>$${p.total.toLocaleString()}</td>
             <td style="color:#047857;">$${p.abono.toLocaleString()}</td>
             <td style="color:#b91c1c; font-weight:700;">$${p.saldo.toLocaleString()}</td>
-            <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+            <td>
+              <select class="select-status-inline ${p.status}" onchange="changePurchaseStatus(${p.id}, this.value)">
+                <option value="PENDING" ${p.status === 'PENDING' ? 'selected' : ''}>Pendiente</option>
+                <option value="PAID" ${p.status === 'PAID' ? 'selected' : ''}>Pagado</option>
+              </select>
+            </td>
             <td>
               <div style="display: flex; gap: 4px;">
-                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})"><i class="fa-solid fa-receipt"></i></button>
-                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})"><i class="fa-solid fa-pen-to-square"></i></button>
-                ${p.status === 'PENDING' ? `<button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})"><i class="fa-solid fa-dollar-sign"></i></button>` : ''}
+                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})" title="Ver Recibo"><i class="fa-solid fa-receipt"></i></button>
+                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                ${p.status === 'PENDING' ? `<button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Abonar"><i class="fa-solid fa-dollar-sign"></i></button>` : ''}
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#b91c1c;" onclick="deletePurchase(${p.id})" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
@@ -968,7 +973,33 @@
       tbody.innerHTML = html;
     }
 
-    // ELIMINAR REGISTRO DE COMPRA / HISTORIAL
+    // CAMBIAR ESTADO DIRECTAMENTE DESDE EL SELECTOR DE LA TABLA
+    window.changePurchaseStatus = async function(id, newStatus) {
+      const p = db.purchases.find(x => x.id === id);
+      if (!p) return;
+
+      if (newStatus === 'PAID' && p.saldo > 0) {
+        const remaining = p.saldo;
+        p.abono = p.total;
+        p.saldo = 0;
+        p.status = 'PAID';
+
+        db.capital = (db.capital || 0) + remaining;
+        db.capitalLogs.push({
+          id: Date.now(),
+          date: new Date().toISOString().split('T')[0],
+          type: 'INCOME',
+          desc: `Pago total del recibo ${p.receiptNo} (${p.client.name})`,
+          amount: remaining
+        });
+      } else if (newStatus === 'PENDING') {
+        p.status = 'PENDING';
+      }
+
+      await saveAllToCloud();
+      refreshAllData();
+    }
+
     window.deletePurchase = async function(id) {
       if (!confirm("¿Estás seguro de eliminar este registro del historial?")) return;
       db.purchases = db.purchases.filter(p => p.id !== id);
@@ -1101,7 +1132,7 @@
       }
 
       let html = '';
-      db.capitalLogs.slice().reverse().forEach((log, idx) => {
+      db.capitalLogs.slice().reverse().forEach((log) => {
         const isIncome = log.type === 'INCOME';
         const badgeColor = isIncome ? '#047857' : '#b91c1c';
         const sign = isIncome ? '+' : '-';
@@ -1123,7 +1154,7 @@
     window.deleteCapitalLog = async function(id) {
       const log = db.capitalLogs.find(l => l.id === id);
       if (!log) return;
-      if (!confirm("¿Eliminar este movimiento y ajustar el capital?")) return;
+      if (!confirm("¿Eliminar este movimiento y reajustar el capital?")) return;
 
       if (log.type === 'INCOME') {
         db.capital -= log.amount;
@@ -1134,6 +1165,27 @@
       db.capitalLogs = db.capitalLogs.filter(l => l.id !== id);
       await saveAllToCloud();
       refreshAllData();
+    }
+
+    window.exportCapitalLogsCSV = function() {
+      if (!db.capitalLogs || db.capitalLogs.length === 0) {
+        alert("No hay movimientos de capital registrados para exportar.");
+        return;
+      }
+
+      let csv = "Fecha,Tipo,Descripcion,Monto\n";
+      db.capitalLogs.forEach(log => {
+        csv += `"${log.date}","${log.type === 'INCOME' ? 'Ingreso' : 'Egreso'}","${log.desc}",${log.amount}\n`;
+      });
+
+      const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Movimientos_Capital_JhonsModas_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function renderMoraTable() {
@@ -1156,7 +1208,7 @@
                 <td><strong>${p.receiptNo}</strong></td>
                 <td>${p.date}</td>
                 <td>${p.client.name}</td>
-                <td><span class="badge badge-pending" style="background:#fef2f2; color:#b91c1c;">${diffDays} días</span></td>
+                <td><span class="badge select-status-inline PENDING" style="background:#fef2f2; color:#b91c1c; border:none;">${diffDays} días</span></td>
                 <td style="color:#b91c1c; font-weight:700;">$${p.saldo.toLocaleString()}</td>
                 <td>
                   <a href="https://wa.me/57${p.client.phone}?text=${encodeURIComponent(wspText)}" target="_blank" class="btn-action btn-wsp" style="padding: 6px 10px; font-size:0.75rem; display:inline-flex;">
@@ -1189,6 +1241,7 @@
       });
 
       document.getElementById('statCapital').innerText = '$' + (db.capital || 0).toLocaleString();
+      document.getElementById('inputCapital').value = db.capital || 0;
       document.getElementById('statTotalVentas').innerText = '$' + totalVentas.toLocaleString();
       document.getElementById('statPendiente').innerText = '$' + pendiente.toLocaleString();
       document.getElementById('statCobrado').innerText = '$' + cobrado.toLocaleString();
@@ -1210,7 +1263,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `Reporte_JhonsModas_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute("download", `Reporte_Ventas_JhonsModas_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
