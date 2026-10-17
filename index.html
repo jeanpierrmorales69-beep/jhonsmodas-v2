@@ -19,7 +19,7 @@
   <!-- FIREBASE REALTIME DATABASE SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set, remove, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDtL5d8t5o_rQN2PyOqaQQiMH3XRkbmwyc",
@@ -38,8 +38,6 @@
     window.ref = ref;
     window.get = get;
     window.set = set;
-    window.remove = remove;
-    window.child = child;
     window.dispatchEvent(new Event('firebase-loaded'));
   </script>
 
@@ -458,7 +456,7 @@
         </div>
 
         <div>
-          <h4 style="font-size: 0.85rem; margin-bottom: 10px; font-weight: 700;">3. CREAR USUARIO</h4>
+          <h4 style="font-size: 0.85rem; margin-bottom: 10px; font-weight: 700;">3. CREAR NUEVO USUARIO</h4>
           <form id="newUserForm" class="form-grid-responsive" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px;">
             <div>
               <label style="font-size: 0.75rem;">Usuario</label>
@@ -596,10 +594,10 @@
         const snapshot = await get(ref(dbCloud, 'jhonsmodas_data'));
         if (snapshot.exists()) {
           const data = snapshot.val();
-          if (data.users) {
+          if (data.users && Array.isArray(data.users)) {
             db.users = [defaultAdmin, defaultEmployee];
             data.users.forEach(u => {
-              if (u.user !== 'jhon' && !db.users.some(x => x.user === u.user)) {
+              if (u.user !== 'jhon' && u.user !== 'empleado' && !db.users.some(x => x.user.toLowerCase() === u.user.toLowerCase())) {
                 db.users.push(u);
               }
             });
@@ -635,11 +633,16 @@
       }
     }
 
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    // FORMULARIO DE LOGIN DINÁMICO MULTI-USUARIO
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const u = document.getElementById('loginUser').value.trim().toLowerCase();
       const p = document.getElementById('loginPass').value.trim();
 
+      // Forzar carga de los datos más recientes de la nube antes de validar
+      await loadDataFromCloud();
+
+      // Validación directa Administrador Principal
       if (u === 'jhon' && p === '15924325') {
         currentUser = defaultAdmin;
         localStorage.setItem('jhonsmodas_session', JSON.stringify(currentUser));
@@ -647,6 +650,7 @@
         return;
       }
 
+      // Validación para cualquier otro usuario registrado por el Admin
       const found = db.users.find(x => x.user.toLowerCase() === u && x.pass === p);
       if (found) {
         currentUser = found;
@@ -1065,6 +1069,7 @@
       document.body.style.backgroundColor = color;
     }
 
+    // CREACIÓN Y GUARDADO AUTOMÁTICO DE USUARIOS EN LA NUBE
     document.getElementById('newUserForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const user = document.getElementById('newUsername').value.trim();
@@ -1081,7 +1086,7 @@
       await saveAllToCloud();
       document.getElementById('newUserForm').reset();
       renderUsersTable();
-      alert('Usuario creado con éxito.');
+      alert(`¡Usuario "${user}" creado exitosamente y guardado en la nube!`);
     });
 
     function renderUsersTable() {
@@ -1092,7 +1097,7 @@
           <tr>
             <td><strong>${u.user}</strong></td>
             <td>${u.role}</td>
-            <td>${u.user !== 'jhon' ? `<button onclick="deleteUser('${u.user}')" style="background:none; border:none; color:#b91c1c; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>` : '<small style="color:var(--text-muted)">Protegido</small>'}</td>
+            <td>${(u.user !== 'jhon' && u.user !== 'empleado') ? `<button onclick="deleteUser('${u.user}')" style="background:none; border:none; color:#b91c1c; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>` : '<small style="color:var(--text-muted)">Protegido</small>'}</td>
           </tr>
         `;
       });
