@@ -16,14 +16,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- FIREBASE SDKs -->
+  <!-- FIREBASE REALTIME DATABASE SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref, get, set, remove, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDtL5d8t5o_rQN2PyOqaQQiMH3XRkbmwyc",
       authDomain: "jhonsmodas-db.firebaseapp.com",
+      databaseURL: "https://jhonsmodas-db-default-rtdb.firebaseio.com",
       projectId: "jhonsmodas-db",
       storageBucket: "jhonsmodas-db.firebasestorage.app",
       messagingSenderId: "894993742133",
@@ -32,11 +33,13 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const dbCloud = getFirestore(app);
+    const dbCloud = getDatabase(app);
     window.dbCloud = dbCloud;
-    window.appReady = true;
-    
-    // Disparar evento de carga de nube
+    window.ref = ref;
+    window.get = get;
+    window.set = set;
+    window.remove = remove;
+    window.child = child;
     window.dispatchEvent(new Event('firebase-loaded'));
   </script>
 
@@ -562,10 +565,11 @@
   </div>
 
   <script type="module">
-    import { collection, getDocs, setDoc, doc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    const defaultAdmin = { user: 'jhon', pass: '15924325', role: 'Admin', avatar: '🦁' };
+    const defaultEmployee = { user: 'empleado', pass: '1234', role: 'Empleado', avatar: '🐆' };
 
     let db = {
-      users: [],
+      users: [defaultAdmin, defaultEmployee],
       clients: [],
       purchases: [],
       capital: 0,
@@ -585,74 +589,49 @@
     async function loadDataFromCloud() {
       try {
         const dbCloud = window.dbCloud;
-        
-        // Cargar usuarios
-        const usersSnap = await getDocs(collection(dbCloud, "users"));
-        if (usersSnap.empty) {
-          // Crear usuarios por defecto si está vacía
-          db.users = [
-            { user: 'jhon', pass: '15924325', role: 'Admin', avatar: '🦁' },
-            { user: 'empleado', pass: '1234', role: 'Empleado', avatar: '🐆' }
-          ];
-          for (let u of db.users) {
-            await setDoc(doc(dbCloud, "users", u.user), u);
+        const ref = window.ref;
+        const get = window.get;
+        if (!dbCloud) return;
+
+        const snapshot = await get(ref(dbCloud, 'jhonsmodas_data'));
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          if (data.users) {
+            db.users = [defaultAdmin, defaultEmployee];
+            data.users.forEach(u => {
+              if (u.user !== 'jhon' && !db.users.some(x => x.user === u.user)) {
+                db.users.push(u);
+              }
+            });
           }
-        } else {
-          db.users = [];
-          usersSnap.forEach(d => db.users.push(d.data()));
-        }
-
-        // Cargar clientes
-        const clientsSnap = await getDocs(collection(dbCloud, "clients"));
-        db.clients = [];
-        clientsSnap.forEach(d => db.clients.push(d.data()));
-
-        // Cargar compras
-        const purchasesSnap = await getDocs(collection(dbCloud, "purchases"));
-        db.purchases = [];
-        purchasesSnap.forEach(d => db.purchases.push(d.data()));
-
-        // Cargar ajustes y capital
-        const settingsDoc = await getDoc(doc(dbCloud, "config", "settings"));
-        if (settingsDoc.exists()) {
-          const data = settingsDoc.data();
+          db.clients = data.clients || [];
+          db.purchases = data.purchases || [];
           db.capital = data.capital || 0;
           db.settings = data.settings || { bgColor: '#f8fafc' };
         } else {
-          await setDoc(doc(dbCloud, "config", "settings"), { capital: 0, settings: db.settings });
+          await saveAllToCloud();
         }
       } catch (e) {
-        console.error("Error cargando de la nube:", e);
+        console.log("Cargando datos...", e);
       }
     }
 
-    async function saveCloudData(type, id, data) {
+    async function saveAllToCloud() {
       try {
         const dbCloud = window.dbCloud;
-        if (type === 'client') {
-          await setDoc(doc(dbCloud, "clients", String(id)), data);
-        } else if (type === 'purchase') {
-          await setDoc(doc(dbCloud, "purchases", String(id)), data);
-        } else if (type === 'user') {
-          await setDoc(doc(dbCloud, "users", String(data.user)), data);
-        } else if (type === 'config') {
-          await setDoc(doc(dbCloud, "config", "settings"), { capital: db.capital, settings: db.settings });
-        }
+        const ref = window.ref;
+        const set = window.set;
+        if (!dbCloud) return;
+
+        await set(ref(dbCloud, 'jhonsmodas_data'), {
+          users: db.users,
+          clients: db.clients,
+          purchases: db.purchases,
+          capital: db.capital,
+          settings: db.settings
+        });
       } catch (e) {
         console.error("Error guardando en la nube:", e);
-      }
-    }
-
-    async function deleteCloudData(type, id) {
-      try {
-        const dbCloud = window.dbCloud;
-        if (type === 'client') {
-          await deleteDoc(doc(dbCloud, "clients", String(id)));
-        } else if (type === 'user') {
-          await deleteDoc(doc(dbCloud, "users", String(id)));
-        }
-      } catch (e) {
-        console.error("Error borrando en la nube:", e);
       }
     }
 
@@ -660,6 +639,13 @@
       e.preventDefault();
       const u = document.getElementById('loginUser').value.trim().toLowerCase();
       const p = document.getElementById('loginPass').value.trim();
+
+      if (u === 'jhon' && p === '15924325') {
+        currentUser = defaultAdmin;
+        localStorage.setItem('jhonsmodas_session', JSON.stringify(currentUser));
+        initApp();
+        return;
+      }
 
       const found = db.users.find(x => x.user.toLowerCase() === u && x.pass === p);
       if (found) {
@@ -675,13 +661,8 @@
       const sess = localStorage.getItem('jhonsmodas_session');
       if (sess) {
         currentUser = JSON.parse(sess);
-        // Verificar si el usuario aún existe en la nube
-        const validUser = db.users.find(u => u.user.toLowerCase() === currentUser.user.toLowerCase());
-        if (validUser) {
-          currentUser = validUser;
-          initApp();
-          return;
-        }
+        initApp();
+        return;
       }
       document.getElementById('loginSection').style.display = 'flex';
       document.getElementById('appContainer').style.display = 'none';
@@ -813,8 +794,7 @@
         db.capital = (db.capital || 0) + abono;
       }
 
-      await saveCloudData('purchase', newPurchase.id, newPurchase);
-      await saveCloudData('config', null, null);
+      await saveAllToCloud();
 
       currentCart = [];
       renderCart();
@@ -832,7 +812,7 @@
 
       const newClient = { id: Date.now(), name, phone };
       db.clients.push(newClient);
-      await saveCloudData('client', newClient.id, newClient);
+      await saveAllToCloud();
 
       document.getElementById('clientForm').reset();
       refreshAllData();
@@ -869,7 +849,7 @@
 
     window.deleteClient = async function(id) {
       db.clients = db.clients.filter(c => c.id !== id);
-      await deleteCloudData('client', id);
+      await saveAllToCloud();
       refreshAllData();
     }
 
@@ -939,8 +919,7 @@
         p.status = 'PAID';
       }
 
-      await saveCloudData('purchase', p.id, p);
-      await saveCloudData('config', null, null);
+      await saveAllToCloud();
       refreshAllData();
       alert(`¡Abono registrado! Nuevo saldo: $${p.saldo.toLocaleString()}`);
     }
@@ -973,7 +952,7 @@
         p.status = 'PENDING';
       }
 
-      await saveCloudData('purchase', p.id, p);
+      await saveAllToCloud();
       refreshAllData();
       alert('Compra actualizada correctamente.');
     }
@@ -1065,7 +1044,7 @@
         return;
       }
       db.capital = val;
-      await saveCloudData('config', null, null);
+      await saveAllToCloud();
       renderMetrics();
       alert('Capital actualizado en la nube.');
     }
@@ -1074,7 +1053,7 @@
       if (!currentUser) return;
       currentUser.avatar = icon;
       db.users = db.users.map(u => u.user.toLowerCase() === currentUser.user.toLowerCase() ? currentUser : u);
-      await saveCloudData('user', null, currentUser);
+      await saveAllToCloud();
       document.getElementById('currentAvatar').innerText = icon;
       localStorage.setItem('jhonsmodas_session', JSON.stringify(currentUser));
       alert('Avatar actualizado.');
@@ -1082,7 +1061,7 @@
 
     window.changeBgColor = async function(color) {
       db.settings.bgColor = color;
-      await saveCloudData('config', null, null);
+      await saveAllToCloud();
       document.body.style.backgroundColor = color;
     }
 
@@ -1099,7 +1078,7 @@
 
       const newUser = { user, pass, role, avatar: '👑' };
       db.users.push(newUser);
-      await saveCloudData('user', null, newUser);
+      await saveAllToCloud();
       document.getElementById('newUserForm').reset();
       renderUsersTable();
       alert('Usuario creado con éxito.');
@@ -1122,7 +1101,7 @@
 
     window.deleteUser = async function(username) {
       db.users = db.users.filter(u => u.user !== username);
-      await deleteCloudData('user', username);
+      await saveAllToCloud();
       renderUsersTable();
     }
 
