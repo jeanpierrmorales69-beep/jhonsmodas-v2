@@ -951,7 +951,7 @@
             <td>${p.client.name}<br><small style="color:var(--text-muted);">${p.client.phone}</small></td>
             <td style="max-width: 180px; font-size: 0.8rem;">${summary}</td>
             <td>$${p.total.toLocaleString()}</td>
-            <td style="color:#047857;">$${p.abono.toLocaleString()}</td>
+            <td style="color:#047857; font-weight: 700;">$${p.abono.toLocaleString()}</td>
             <td style="color:#b91c1c; font-weight:700;">$${p.saldo.toLocaleString()}</td>
             <td>
               <select class="select-status-inline ${p.status}" onchange="changePurchaseStatus(${p.id}, this.value)">
@@ -963,7 +963,7 @@
               <div style="display: flex; gap: 4px;">
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})" title="Ver Recibo"><i class="fa-solid fa-receipt"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                ${p.status === 'PENDING' ? `<button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Abonar"><i class="fa-solid fa-dollar-sign"></i></button>` : ''}
+                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Modificar Abono"><i class="fa-solid fa-dollar-sign"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#b91c1c;" onclick="deletePurchase(${p.id})" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
@@ -973,7 +973,7 @@
       tbody.innerHTML = html;
     }
 
-    // CAMBIAR ESTADO DIRECTAMENTE DESDE EL SELECTOR DE LA TABLA
+    // CAMBIAR ESTADO DESDE LA BARRA DESPLEGABLE
     window.changePurchaseStatus = async function(id, newStatus) {
       const p = db.purchases.find(x => x.id === id);
       if (!p) return;
@@ -984,12 +984,13 @@
         p.saldo = 0;
         p.status = 'PAID';
 
+        // Solo al marcar como PAGADO se envía el saldo restante al capital
         db.capital = (db.capital || 0) + remaining;
         db.capitalLogs.push({
           id: Date.now(),
           date: new Date().toISOString().split('T')[0],
           type: 'INCOME',
-          desc: `Pago total del recibo ${p.receiptNo} (${p.client.name})`,
+          desc: `Liquidación total recibo ${p.receiptNo} (${p.client.name})`,
           amount: remaining
         });
       } else if (newStatus === 'PENDING') {
@@ -1000,18 +1001,11 @@
       refreshAllData();
     }
 
-    window.deletePurchase = async function(id) {
-      if (!confirm("¿Estás seguro de eliminar este registro del historial?")) return;
-      db.purchases = db.purchases.filter(p => p.id !== id);
-      await saveAllToCloud();
-      refreshAllData();
-      alert("Registro eliminado con éxito.");
-    }
-
     window.addAbonoPrompt = async function(id) {
       const p = db.purchases.find(x => x.id === id);
       if (!p) return;
-      const amountStr = prompt(`Saldo pendiente actual: $${p.saldo.toLocaleString()}\nIngrese el valor del nuevo abono:`);
+
+      const amountStr = prompt(`Factura: ${p.receiptNo}\nTotal Factura: $${p.total.toLocaleString()}\nAbono actual: $${p.abono.toLocaleString()}\nSaldo pendiente actual: $${p.saldo.toLocaleString()}\n\nIngrese el monto del NUEVO abono a sumar:`);
       if (!amountStr) return;
       const amount = parseFloat(amountStr);
       if (isNaN(amount) || amount <= 0) {
@@ -1019,29 +1013,41 @@
         return;
       }
       if (amount > p.saldo) {
-        alert('El abono no puede ser mayor al saldo pendiente.');
+        alert('El abono ingresado supera el saldo pendiente.');
         return;
       }
 
       p.abono += amount;
       p.saldo = p.total - p.abono;
+
+      // El monto abonado se suma directamente al capital
       db.capital = (db.capital || 0) + amount;
       db.capitalLogs.push({
         id: Date.now(),
         date: new Date().toISOString().split('T')[0],
         type: 'INCOME',
-        desc: `Abono a recibo ${p.receiptNo} (${p.client.name})`,
+        desc: `Abono parcial recibo ${p.receiptNo} (${p.client.name})`,
         amount: amount
       });
 
       if (p.saldo <= 0) {
         p.saldo = 0;
         p.status = 'PAID';
+      } else {
+        p.status = 'PENDING';
       }
 
       await saveAllToCloud();
       refreshAllData();
-      alert(`¡Abono registrado! Nuevo saldo: $${p.saldo.toLocaleString()}`);
+      alert(`¡Abono registrado exitosamente! Nuevo saldo: $${p.saldo.toLocaleString()}`);
+    }
+
+    window.deletePurchase = async function(id) {
+      if (!confirm("¿Estás seguro de eliminar este registro del historial?")) return;
+      db.purchases = db.purchases.filter(p => p.id !== id);
+      await saveAllToCloud();
+      refreshAllData();
+      alert("Registro eliminado con éxito.");
     }
 
     window.editPurchase = async function(id) {
