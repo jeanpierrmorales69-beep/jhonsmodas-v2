@@ -8,7 +8,7 @@
   <!-- Meta tags para previsualización al compartir por WhatsApp -->
   <meta property="og:title" content="JhonsModas - Control Financiero">
   <meta property="og:description" content="Elegancia que deja huella. Plataforma de control financiero y gestión de facturación.">
-  <meta property="og:image" content="https://i.ibb.co/L8r3q3K/logo-1.png">
+  <meta property="og:image" content="logo (2).png">
   <meta property="og:type" content="website">
 
   <!-- FontAwesome e Google Fonts -->
@@ -574,9 +574,9 @@
 
   <!-- PANTALLA DE INICIO DE SESIÓN -->
   <div id="loginSection" class="login-wrapper">
-    <img src="https://i.ibb.co/L8r3q3K/logo-1.png" class="login-bg-pattern" alt="JhonsModas">
+    <img src="logo (2).png" class="login-bg-pattern" alt="JhonsModas">
     <div class="login-card">
-      <img src="https://i.ibb.co/L8r3q3K/logo-1.png" alt="JhonsModas" class="login-logo">
+      <img src="logo (2).png" alt="JhonsModas" class="login-logo">
       <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; color: #09090b;">SISTEMA FINANCIERO</h2>
       
       <form id="loginForm">
@@ -601,7 +601,7 @@
     <!-- NAVBAR -->
     <nav class="navbar">
       <div class="nav-brand">
-        <img src="https://i.ibb.co/L8r3q3K/logo-1.png" alt="JhonsModas" class="nav-logo">
+        <img src="logo (2).png" alt="JhonsModas" class="nav-logo">
       </div>
       <ul class="nav-menu">
         <li><a class="nav-link active" onclick="switchTab('tabInicio')"><i class="fa-solid fa-house"></i> Inicio</a></li>
@@ -626,7 +626,7 @@
     <!-- SECCIÓN 1: INICIO Y MÉTRICAS -->
     <div id="tabInicio" class="content-section active">
       <div class="hero-banner">
-        <img src="https://i.ibb.co/L8r3q3K/logo-1.png" class="hero-bg-logo" alt="logo">
+        <img src="logo (2).png" class="hero-bg-logo" alt="logo">
         <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: #d4d4d8; margin-bottom: 6px;">
           JHONSMODAS • CONTROL FINANCIERO
         </div>
@@ -944,10 +944,10 @@
   <div id="receiptModal" class="modal-backdrop">
     <div class="modal-card">
       <div id="receiptContent" class="receipt-container">
-        <img src="https://i.ibb.co/L8r3q3K/logo-1.png" class="receipt-watermark" alt="watermark">
+        <img src="logo (2).png" class="receipt-watermark" alt="watermark">
         
         <div class="receipt-header">
-          <img src="https://i.ibb.co/L8r3q3K/logo-1.png" class="receipt-logo" alt="JhonsModas">
+          <img src="logo (2).png" class="receipt-logo" alt="JhonsModas">
           <div style="font-size: 0.85rem; font-weight: 700; color: #475569;">JHONSMODAS</div>
           <div style="font-size: 0.8rem; color: #64748b;">NIT: 15924325</div>
           <div style="font-size: 0.8rem; color: #64748b;">Medios de Pago: Nequi 313 6227385</div>
@@ -1064,7 +1064,6 @@
         currentUser = JSON.parse(sess);
         initApp();
       } else {
-        // Forzar pantalla de login
         document.getElementById('loginSection').style.display = 'flex';
         document.getElementById('appContainer').style.display = 'none';
       }
@@ -1318,11 +1317,9 @@
         return;
       }
 
-      // Restar del saldo e incrementar lo abonado
       p.abono += amount;
       p.saldo = p.total - p.abono;
 
-      // Sumar al capital de la empresa
       db.capital = (db.capital || 0) + amount;
 
       if (p.saldo <= 0) {
