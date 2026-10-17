@@ -266,6 +266,12 @@
             </div>
           </div>
 
+          <!-- CAMPO OPCIONAL: NIT / CC PARA LA FACTURA -->
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label>NIT / CC Cliente (Opcional para Factura)</label>
+            <input type="text" id="clientDocInput" class="form-control" placeholder="Ej: 1070123456 o 900123456-1">
+          </div>
+
           <div style="background: #f8fafc; padding: 16px; border-radius: 16px; margin-bottom: 20px; border: 1px solid var(--border-color);">
             <h4 style="font-size: 0.8rem; margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase;">Agregar Producto a la Compra</h4>
             <div class="form-grid-responsive" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end;">
@@ -365,14 +371,15 @@
           <h3 class="card-title"><i class="fa-solid fa-users"></i> Catálogo de Clientes</h3>
         </div>
 
+        <!-- FORMULARIO DE CLIENTE CON WHATSAPP OPCIONAL -->
         <form id="clientForm" class="form-grid-responsive" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-bottom: 20px;">
           <div>
             <label class="form-group" style="margin:0; font-size: 0.75rem;">Nombre Completo (*)</label>
             <input type="text" id="clientName" class="form-control" placeholder="Ej: Laura Restrepo" required>
           </div>
           <div>
-            <label class="form-group" style="margin:0; font-size: 0.75rem;">Número WhatsApp (*)</label>
-            <input type="text" id="clientPhone" class="form-control" placeholder="Ej: 3001234567" required>
+            <label class="form-group" style="margin:0; font-size: 0.75rem;">Número WhatsApp (Opcional)</label>
+            <input type="text" id="clientPhone" class="form-control" placeholder="Ej: 3001234567">
           </div>
           <button type="submit" class="btn-black" style="align-self: end; padding: 14px;">
             <i class="fa-solid fa-user-plus"></i> Registrar
@@ -424,7 +431,6 @@
           <h3 class="card-title"><i class="fa-solid fa-sliders"></i> Ajustes y Gestión de Capital</h3>
         </div>
 
-        <!-- APARTADO DE CAPITAL, INGRESOS Y EGRESOS -->
         <div style="margin-bottom: 28px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--border-color);">
           <h4 style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <span><i class="fa-solid fa-vault" style="color: var(--accent-blue);"></i> Control de Capital e Historial de Movimientos</span>
@@ -562,6 +568,7 @@
           </div>
           <div style="text-align: right;">
             <div><strong>CLIENTE:</strong> <span id="rClient">--</span></div>
+            <div id="rDocRow" style="display:none;"><strong>NIT/CC:</strong> <span id="rDoc">--</span></div>
             <div><strong>WHATSAPP:</strong> <span id="rPhone">--</span></div>
           </div>
         </div>
@@ -825,6 +832,7 @@
       }
 
       const client = db.clients.find(c => c.id == clientId);
+      const clientDoc = document.getElementById('clientDocInput').value.trim();
       const total = currentCart.reduce((acc, curr) => acc + curr.subtotal, 0);
       const abono = parseFloat(document.getElementById('initialAbono').value) || 0;
       const saldo = total - abono;
@@ -834,6 +842,7 @@
         receiptNo: '#JM-' + Math.floor(1000 + Math.random() * 9000),
         date: new Date().toISOString().split('T')[0],
         client: client,
+        clientDoc: clientDoc || '',
         items: [...currentCart],
         total: total,
         abono: abono,
@@ -842,6 +851,8 @@
       };
 
       db.purchases.push(newPurchase);
+
+      // Solo si hubo un abono inicial se suma al capital
       if (abono > 0) {
         db.capital = (db.capital || 0) + abono;
         db.capitalLogs.push({
@@ -858,6 +869,7 @@
       currentCart = [];
       renderCart();
       document.getElementById('initialAbono').value = '0';
+      document.getElementById('clientDocInput').value = '';
       document.getElementById('purchaseForm').reset();
 
       openReceiptModal(newPurchase);
@@ -867,7 +879,7 @@
     document.getElementById('clientForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('clientName').value.trim();
-      const phone = document.getElementById('clientPhone').value.trim();
+      const phone = document.getElementById('clientPhone').value.trim() || 'Sin registrar';
 
       const newClient = { id: Date.now(), name, phone };
       db.clients.push(newClient);
@@ -948,7 +960,7 @@
         html += `
           <tr>
             <td><strong>${p.receiptNo}</strong><br><small style="color:var(--text-muted);">${p.date}</small></td>
-            <td>${p.client.name}<br><small style="color:var(--text-muted);">${p.client.phone}</small></td>
+            <td>${p.client.name}<br><small style="color:var(--text-muted);">${p.client.phone}${p.clientDoc ? ' | CC/NIT: ' + p.clientDoc : ''}</small></td>
             <td style="max-width: 180px; font-size: 0.8rem;">${summary}</td>
             <td>$${p.total.toLocaleString()}</td>
             <td style="color:#047857; font-weight: 700;">$${p.abono.toLocaleString()}</td>
@@ -963,7 +975,7 @@
               <div style="display: flex; gap: 4px;">
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})" title="Ver Recibo"><i class="fa-solid fa-receipt"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Modificar Abono"><i class="fa-solid fa-dollar-sign"></i></button>
+                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Ingresar Abono"><i class="fa-solid fa-dollar-sign"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#b91c1c;" onclick="deletePurchase(${p.id})" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
@@ -973,7 +985,7 @@
       tbody.innerHTML = html;
     }
 
-    // CAMBIAR ESTADO DESDE LA BARRA DESPLEGABLE
+    // CAMBIAR ESTADO DESDE LA BARRA DESPLEGABLE (PAGADO / PENDIENTE)
     window.changePurchaseStatus = async function(id, newStatus) {
       const p = db.purchases.find(x => x.id === id);
       if (!p) return;
@@ -984,7 +996,7 @@
         p.saldo = 0;
         p.status = 'PAID';
 
-        // Solo al marcar como PAGADO se envía el saldo restante al capital
+        // Al seleccionar 'Pagado', el saldo pendiente entra al capital
         db.capital = (db.capital || 0) + remaining;
         db.capitalLogs.push({
           id: Date.now(),
@@ -1001,26 +1013,27 @@
       refreshAllData();
     }
 
+    // AÑADIR MONTO DE ABONO CUALQUIERA
     window.addAbonoPrompt = async function(id) {
       const p = db.purchases.find(x => x.id === id);
       if (!p) return;
 
-      const amountStr = prompt(`Factura: ${p.receiptNo}\nTotal Factura: $${p.total.toLocaleString()}\nAbono actual: $${p.abono.toLocaleString()}\nSaldo pendiente actual: $${p.saldo.toLocaleString()}\n\nIngrese el monto del NUEVO abono a sumar:`);
+      const amountStr = prompt(`Factura: ${p.receiptNo}\nTotal: $${p.total.toLocaleString()}\nAbonado actual: $${p.abono.toLocaleString()}\nSaldo pendiente: $${p.saldo.toLocaleString()}\n\nIngrese la cantidad que desea abonar hoy ($):`);
       if (!amountStr) return;
       const amount = parseFloat(amountStr);
       if (isNaN(amount) || amount <= 0) {
-        alert('Cantidad inválida.');
+        alert('Por favor ingrese un monto válido.');
         return;
       }
       if (amount > p.saldo) {
-        alert('El abono ingresado supera el saldo pendiente.');
+        alert('El monto abonado no puede superar el saldo pendiente.');
         return;
       }
 
       p.abono += amount;
       p.saldo = p.total - p.abono;
 
-      // El monto abonado se suma directamente al capital
+      // El monto abonado va directamente al capital
       db.capital = (db.capital || 0) + amount;
       db.capitalLogs.push({
         id: Date.now(),
@@ -1039,7 +1052,7 @@
 
       await saveAllToCloud();
       refreshAllData();
-      alert(`¡Abono registrado exitosamente! Nuevo saldo: $${p.saldo.toLocaleString()}`);
+      alert(`¡Abono registrado con éxito! Nuevo saldo: $${p.saldo.toLocaleString()}`);
     }
 
     window.deletePurchase = async function(id) {
@@ -1259,10 +1272,10 @@
         return;
       }
 
-      let csv = "Recibo,Fecha,Cliente,Telefono,Productos,Total,Abonado,Saldo,Estado\n";
+      let csv = "Recibo,Fecha,Cliente,Documento,Telefono,Productos,Total,Abonado,Saldo,Estado\n";
       db.purchases.forEach(p => {
         let prods = p.items.map(i => `${i.qty}x ${i.desc}`).join(" - ");
-        csv += `"${p.receiptNo}","${p.date}","${p.client.name}","${p.client.phone}","${prods}",${p.total},${p.abono},${p.saldo},"${p.status}"\n`;
+        csv += `"${p.receiptNo}","${p.date}","${p.client.name}","${p.clientDoc || 'N/A'}","${p.client.phone}","${prods}",${p.total},${p.abono},${p.saldo},"${p.status}"\n`;
       });
 
       const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1342,6 +1355,13 @@
       document.getElementById('rDate').innerText = p.date;
       document.getElementById('rClient').innerText = p.client.name;
       document.getElementById('rPhone').innerText = p.client.phone;
+
+      if (p.clientDoc) {
+        document.getElementById('rDocRow').style.display = 'block';
+        document.getElementById('rDoc').innerText = p.clientDoc;
+      } else {
+        document.getElementById('rDocRow').style.display = 'none';
+      }
 
       let itemsHtml = '';
       p.items.forEach(i => {
