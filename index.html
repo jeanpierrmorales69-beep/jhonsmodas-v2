@@ -110,7 +110,8 @@
     .custom-table td { padding: 14px; font-size: 0.88rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 
     .select-status-inline { padding: 6px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 1px solid var(--border-color); cursor: pointer; outline: none; }
-    .select-status-inline.PENDING { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .select-status-inline.PENDING { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+    .select-status-inline.ABONADO { background: #fef3c7; color: #92400e; border-color: #fde68a; }
     .select-status-inline.PAID { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 
     .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9, 9, 11, 0.75); backdrop-filter: blur(6px); z-index: 100; align-items: center; justify-content: center; padding: 12px; }
@@ -226,9 +227,9 @@
         <div class="stat-card">
           <div>
             <div class="stat-label">Pendiente</div>
-            <div id="statPendiente" class="stat-value" style="color: #b45309;">$0</div>
+            <div id="statPendiente" class="stat-value" style="color: #b91c1c;">$0</div>
           </div>
-          <div class="stat-icon" style="background: #fef3c7; color: #b45309;"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="stat-icon" style="background: #fef2f2; color: #b91c1c;"><i class="fa-solid fa-clock-rotate-left"></i></div>
         </div>
         <div class="stat-card">
           <div>
@@ -266,7 +267,6 @@
             </div>
           </div>
 
-          <!-- CAMPO OPCIONAL: NIT / CC PARA LA FACTURA -->
           <div class="form-group" style="margin-bottom: 20px;">
             <label>NIT / CC Cliente (Opcional para Factura)</label>
             <input type="text" id="clientDocInput" class="form-control" placeholder="Ej: 1070123456 o 900123456-1">
@@ -337,6 +337,7 @@
             <select id="filterStatus" class="form-control" onchange="renderHistoryTable()" style="flex:1; min-width: 130px;">
               <option value="ALL">Todos los Estados</option>
               <option value="PENDING">Pendientes</option>
+              <option value="ABONADO">Abonados</option>
               <option value="PAID">Pagados</option>
             </select>
             <button class="btn-black btn-green" onclick="exportWeeklyCSV()" style="padding: 10px 14px; font-size: 0.8rem; width:auto;">
@@ -371,7 +372,6 @@
           <h3 class="card-title"><i class="fa-solid fa-users"></i> Catálogo de Clientes</h3>
         </div>
 
-        <!-- FORMULARIO DE CLIENTE CON WHATSAPP OPCIONAL -->
         <form id="clientForm" class="form-grid-responsive" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-bottom: 20px;">
           <div>
             <label class="form-group" style="margin:0; font-size: 0.75rem;">Nombre Completo (*)</label>
@@ -837,6 +837,13 @@
       const abono = parseFloat(document.getElementById('initialAbono').value) || 0;
       const saldo = total - abono;
 
+      let status = 'PENDING';
+      if (saldo <= 0) {
+        status = 'PAID';
+      } else if (abono > 0) {
+        status = 'ABONADO';
+      }
+
       const newPurchase = {
         id: Date.now(),
         receiptNo: '#JM-' + Math.floor(1000 + Math.random() * 9000),
@@ -847,12 +854,11 @@
         total: total,
         abono: abono,
         saldo: saldo,
-        status: saldo <= 0 ? 'PAID' : 'PENDING'
+        status: status
       };
 
       db.purchases.push(newPurchase);
 
-      // Solo si hubo un abono inicial se suma al capital
       if (abono > 0) {
         db.capital = (db.capital || 0) + abono;
         db.capitalLogs.push({
@@ -968,6 +974,7 @@
             <td>
               <select class="select-status-inline ${p.status}" onchange="changePurchaseStatus(${p.id}, this.value)">
                 <option value="PENDING" ${p.status === 'PENDING' ? 'selected' : ''}>Pendiente</option>
+                <option value="ABONADO" ${p.status === 'ABONADO' ? 'selected' : ''}>Abonado</option>
                 <option value="PAID" ${p.status === 'PAID' ? 'selected' : ''}>Pagado</option>
               </select>
             </td>
@@ -975,7 +982,6 @@
               <div style="display: flex; gap: 4px;">
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem;" onclick="openReceiptModalById(${p.id})" title="Ver Recibo"><i class="fa-solid fa-receipt"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#475569;" onclick="editPurchase(${p.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#047857;" onclick="addAbonoPrompt(${p.id})" title="Ingresar Abono"><i class="fa-solid fa-dollar-sign"></i></button>
                 <button class="btn-black" style="padding: 6px 8px; font-size: 0.7rem; background:#b91c1c;" onclick="deletePurchase(${p.id})" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
@@ -985,74 +991,66 @@
       tbody.innerHTML = html;
     }
 
-    // CAMBIAR ESTADO DESDE LA BARRA DESPLEGABLE (PAGADO / PENDIENTE)
+    // CAMBIAR ESTADO DESDE LA BARRA DESPLEGABLE (PENDIENTE / ABONADO / PAGADO)
     window.changePurchaseStatus = async function(id, newStatus) {
       const p = db.purchases.find(x => x.id === id);
       if (!p) return;
 
-      if (newStatus === 'PAID' && p.saldo > 0) {
-        const remaining = p.saldo;
-        p.abono = p.total;
-        p.saldo = 0;
-        p.status = 'PAID';
+      if (newStatus === 'ABONADO') {
+        const amountStr = prompt(`Factura: ${p.receiptNo}\nTotal: $${p.total.toLocaleString()}\nAbonado actual: $${p.abono.toLocaleString()}\nSaldo pendiente: $${p.saldo.toLocaleString()}\n\nIngrese la cantidad a abonar ($):`);
+        if (!amountStr) {
+          refreshAllData();
+          return;
+        }
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0 || amount > p.saldo) {
+          alert('Monto no válido.');
+          refreshAllData();
+          return;
+        }
 
-        // Al seleccionar 'Pagado', el saldo pendiente entra al capital
-        db.capital = (db.capital || 0) + remaining;
+        p.abono += amount;
+        p.saldo = p.total - p.abono;
+
+        db.capital = (db.capital || 0) + amount;
         db.capitalLogs.push({
           id: Date.now(),
           date: new Date().toISOString().split('T')[0],
           type: 'INCOME',
-          desc: `Liquidación total recibo ${p.receiptNo} (${p.client.name})`,
-          amount: remaining
+          desc: `Abono parcial recibo ${p.receiptNo} (${p.client.name})`,
+          amount: amount
         });
+
+        if (p.saldo <= 0) {
+          p.saldo = 0;
+          p.status = 'PAID';
+        } else {
+          p.status = 'ABONADO';
+        }
+
+      } else if (newStatus === 'PAID') {
+        if (p.saldo > 0) {
+          const remaining = p.saldo;
+          p.abono = p.total;
+          p.saldo = 0;
+
+          db.capital = (db.capital || 0) + remaining;
+          db.capitalLogs.push({
+            id: Date.now(),
+            date: new Date().toISOString().split('T')[0],
+            type: 'INCOME',
+            desc: `Pago total recibo ${p.receiptNo} (${p.client.name})`,
+            amount: remaining
+          });
+        }
+        p.status = 'PAID';
+
       } else if (newStatus === 'PENDING') {
         p.status = 'PENDING';
       }
 
       await saveAllToCloud();
       refreshAllData();
-    }
-
-    // AÑADIR MONTO DE ABONO CUALQUIERA
-    window.addAbonoPrompt = async function(id) {
-      const p = db.purchases.find(x => x.id === id);
-      if (!p) return;
-
-      const amountStr = prompt(`Factura: ${p.receiptNo}\nTotal: $${p.total.toLocaleString()}\nAbonado actual: $${p.abono.toLocaleString()}\nSaldo pendiente: $${p.saldo.toLocaleString()}\n\nIngrese la cantidad que desea abonar hoy ($):`);
-      if (!amountStr) return;
-      const amount = parseFloat(amountStr);
-      if (isNaN(amount) || amount <= 0) {
-        alert('Por favor ingrese un monto válido.');
-        return;
-      }
-      if (amount > p.saldo) {
-        alert('El monto abonado no puede superar el saldo pendiente.');
-        return;
-      }
-
-      p.abono += amount;
-      p.saldo = p.total - p.abono;
-
-      // El monto abonado va directamente al capital
-      db.capital = (db.capital || 0) + amount;
-      db.capitalLogs.push({
-        id: Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        type: 'INCOME',
-        desc: `Abono parcial recibo ${p.receiptNo} (${p.client.name})`,
-        amount: amount
-      });
-
-      if (p.saldo <= 0) {
-        p.saldo = 0;
-        p.status = 'PAID';
-      } else {
-        p.status = 'PENDING';
-      }
-
-      await saveAllToCloud();
-      refreshAllData();
-      alert(`¡Abono registrado con éxito! Nuevo saldo: $${p.saldo.toLocaleString()}`);
     }
 
     window.deletePurchase = async function(id) {
@@ -1087,6 +1085,8 @@
       if (p.saldo <= 0) {
         p.saldo = 0;
         p.status = 'PAID';
+      } else if (p.abono > 0) {
+        p.status = 'ABONADO';
       } else {
         p.status = 'PENDING';
       }
@@ -1214,7 +1214,7 @@
 
       let html = '';
       db.purchases.forEach(p => {
-        if (p.status === 'PENDING') {
+        if (p.status === 'PENDING' || p.status === 'ABONADO') {
           const pDate = new Date(p.date);
           const diffDays = Math.floor((today - pDate) / (1000 * 60 * 60 * 24));
           if (diffDays > 30) {
@@ -1227,7 +1227,7 @@
                 <td><strong>${p.receiptNo}</strong></td>
                 <td>${p.date}</td>
                 <td>${p.client.name}</td>
-                <td><span class="badge select-status-inline PENDING" style="background:#fef2f2; color:#b91c1c; border:none;">${diffDays} días</span></td>
+                <td><span class="badge select-status-inline PENDING" style="border:none;">${diffDays} días</span></td>
                 <td style="color:#b91c1c; font-weight:700;">$${p.saldo.toLocaleString()}</td>
                 <td>
                   <a href="https://wa.me/57${p.client.phone}?text=${encodeURIComponent(wspText)}" target="_blank" class="btn-action btn-wsp" style="padding: 6px 10px; font-size:0.75rem; display:inline-flex;">
